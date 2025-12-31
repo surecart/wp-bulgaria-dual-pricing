@@ -4,7 +4,7 @@ A WordPress plugin that adds dual pricing (BGN/EUR) support for SureCart in comp
 
 ## Description
 
-This plugin extends SureCart to automatically display prices in both Bulgarian Lev (BGN) and Euro (EUR) on product pages. This is required by Bulgarian law, which mandates that prices must be displayed in both the national currency (BGN) and Euro for consumer transparency.
+This plugin extends SureCart to automatically display prices in both Bulgarian Lev (BGN) and Euro (EUR) on product pages and shop pages. This is required by Bulgarian law, which mandates that prices must be displayed in both the national currency (BGN) and Euro for consumer transparency.
 
 ### Features
 
