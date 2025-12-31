@@ -198,7 +198,7 @@ class SureCartBulgariaSetPricingAttribute {
         if ( 'bgn' !== $price->currency ) {
             return $price->display_amount;
         }
-        $euro_amount = $price->amount * 1.95583; // needs to be fixed to use the legal exchange rate.
+        $euro_amount = $price->amount / 1.95583; // Convert BGN to EUR using fixed rate: €1 = 1.95583 BGN
 		$euro_display_amount = empty( $euro_amount ) ? '' : Currency::format( $euro_amount, 'eur' );
 		$price->setAttribute( 'euro_display_amount', $euro_display_amount );
 	}
