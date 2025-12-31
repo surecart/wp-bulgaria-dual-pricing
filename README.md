@@ -74,7 +74,7 @@ The plugin works automatically once activated. Simply:
 
 1. Create or edit your SureCart products as usual
 2. Set prices in BGN
-3. The plugin will automatically display the EUR equivalent on the frontend
+3. The plugin will automatically display the both BGN and EUR in product list pages and single product pages.
 
 ## Support
 
