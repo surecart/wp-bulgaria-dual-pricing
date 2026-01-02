@@ -8,23 +8,23 @@ store("surecart/bulgaria-dual-pricing", {
     get selectedDisplayAmount() {
       const { prices, selectedPrice } = getContext("surecart/product-page");
       const { state: productPageState } = store("surecart/product-page");
-      const { euroPrices, euroVariants } = getContext(
+      const { bgnPrices, bgnVariants } = getContext(
         "surecart/bulgaria-dual-pricing"
       );
-      const selectedEuroPrice = euroPrices.find(
+      const selectedBgnPrice = bgnPrices.find(
         (price) => price.id === selectedPrice.id
       );
-      const selectedEuroVariant = euroVariants.find(
+      const selectedBgnVariant = bgnVariants.find(
         (variant) => variant.id === productPageState.selectedVariant.id
       );
 
       if (prices?.length > 1) {
-        return selectedEuroPrice?.euro_display_amount || "";
+        return selectedBgnPrice?.bgn_display_amount || "";
       }
 
       return (
-        selectedEuroVariant?.euro_display_amount ||
-        selectedEuroPrice?.euro_display_amount ||
+        selectedBgnVariant?.bgn_display_amount ||
+        selectedBgnPrice?.bgn_display_amount ||
         ""
       );
     },

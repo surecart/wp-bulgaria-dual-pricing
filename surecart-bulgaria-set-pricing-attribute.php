@@ -44,20 +44,20 @@ class SureCartBulgariaSetPricingAttribute {
         $product = sc_get_product();
 
         return array(
-            'euroPrices'   => array_map(
+            'bgnPrices'   => array_map(
                 fn( $price ) => $price->only(
                     array(
                         'id',
-                        'euro_display_amount',
+                        'bgn_display_amount',
                     )
                 ),
                 $product->active_prices ?? array()
             ),
-            'euroVariants' => array_map(
+            'bgnVariants' => array_map(
                 fn( $variant ) => $variant->only(
                     array(
                         'id',
-                        'euro_display_amount',
+                        'bgn_display_amount',
                     )
                 ),
                 $product->variants->data ?? array()
@@ -145,7 +145,7 @@ class SureCartBulgariaSetPricingAttribute {
 
         $product = sc_get_product();
 
-        $additional_content = $product->initial_price->euro_display_amount;
+        $additional_content = $product->initial_price->bgn_display_amount;
 
 		// Use WP_HTML_Tag_Processor to inject content inside the wrapper.
 		$processor = new WP_HTML_Tag_Processor( $block_content );
@@ -195,11 +195,11 @@ class SureCartBulgariaSetPricingAttribute {
 	* @return void
 	*/
 	public function set_pricing_attribute( $price ) {
-        if ( 'bgn' !== $price->currency ) {
+        if ( 'eur' !== $price->currency ) {
             return $price->display_amount;
         }
-        $euro_amount = $price->amount / 1.95583; // Convert BGN to EUR using fixed rate: €1 = 1.95583 BGN
-		$euro_display_amount = empty( $euro_amount ) ? '' : Currency::format( $euro_amount, 'eur' );
-		$price->setAttribute( 'euro_display_amount', $euro_display_amount );
+        $bgn_amount = $price->amount * 1.95583; // Convert EUR to BGN using fixed rate: 1 EUR = 1.95583 BGN.
+		$bgn_display_amount = empty( $bgn_amount ) ? '' : Currency::format( $bgn_amount, 'bgn' );
+		$price->setAttribute( 'bgn_display_amount', $bgn_display_amount );
 	}
 }
