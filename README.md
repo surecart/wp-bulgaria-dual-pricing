@@ -8,7 +8,7 @@ This plugin extends SureCart to automatically display prices in both Bulgarian L
 
 ### Features
 
-- **Automatic Currency Conversion**: Automatically converts BGN prices to EUR using the official exchange rate
+- **Automatic Currency Conversion**: Automatically converts EUR prices to BGN using the official exchange rate
 - **Dual Price Display**: Shows both BGN and EUR prices on product pages
 - **Variant Support**: Handles dual pricing for product variants
 - **List Price Support**: Displays both currencies for comparison/list prices
@@ -18,8 +18,8 @@ This plugin extends SureCart to automatically display prices in both Bulgarian L
 
 The plugin hooks into SureCart's price rendering system and:
 
-1. Detects when prices are displayed in BGN
-2. Calculates the equivalent EUR amount using the conversion rate
+1. Detects when prices are displayed in EUR
+2. Calculates the equivalent BGN amount using the conversion rate
 3. Displays both currencies to customers on the frontend
 
 ## ⚠️ Legal Disclaimer
@@ -40,7 +40,7 @@ By using this plugin, you accept full responsibility for its implementation and 
 - WordPress 6.0 or higher
 - PHP 7.4 or higher
 - **SureCart Plugin** (must be installed and activated)
-- You must have Bulgarian currency as your store currency.
+- You must have Euro as your store currency.
 
 ## Installation
 
@@ -64,8 +64,8 @@ By using this plugin, you accept full responsibility for its implementation and 
 
 Once activated, the plugin will automatically:
 
-- Display dual pricing on all SureCart product pages and shop pages with BGN currency
-- Show EUR equivalents alongside BGN prices using the standard €1 = 1.95583 BGN.
+- Display dual pricing on all SureCart product pages and shop pages with EUR currency
+- Show BGN equivalents alongside EUR prices using the standard 1 EUR = 1.95583 BGN.
 - No additional configuration required!
 
 ## Usage
@@ -73,8 +73,8 @@ Once activated, the plugin will automatically:
 The plugin works automatically once activated. Simply:
 
 1. Create or edit your SureCart products as usual
-2. Set prices in BGN
-3. The plugin will automatically display the both BGN and EUR in product list pages and single product pages.
+2. Set prices in EUR
+3. The plugin will automatically display the BGN equivalent on the frontend
 
 ## Support
 
