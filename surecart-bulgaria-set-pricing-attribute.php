@@ -1,6 +1,8 @@
 <?php
 /**
  * Set the pricing attribute for the product.
+ *
+ * @package SureCartBulgariaDualPricing
  */
 
 use SureCart\Support\Currency;
@@ -13,6 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Set the pricing attribute for the product.
  */
 class SureCartBulgariaSetPricingAttribute {
+
 	/**
 	 * Constructor.
 	 *
@@ -21,7 +24,7 @@ class SureCartBulgariaSetPricingAttribute {
 	public function __construct() {
 		add_action( 'surecart/price/attributes_set', array( $this, 'set_pricing_attribute' ) );
 		add_action( 'surecart/variant/attributes_set', array( $this, 'set_pricing_attribute' ) );
-		add_action( 'surecart/checkout/attributes_set', array( $this, 'set_checkout_total_attribute' ) );
+		add_filter( 'rest_post_dispatch', array( $this, 'modify_checkout_rest_response' ), 10, 3 );
 		add_action( 'render_block', array( $this, 'update_selected_price' ), 10, 2 );
 		add_action( 'render_block', array( $this, 'update_list_price' ), 10, 2 );
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_block_assets' ) );
@@ -36,35 +39,35 @@ class SureCartBulgariaSetPricingAttribute {
 		wp_register_script_module( 'surecart-bulgaria-dual-pricing', plugin_dir_url( __FILE__ ) . 'surecart-bulgaria-dual-pricing.js', array( '@surecart/product-page' ) );
 	}
 
-    /**
-     * Get the context for the block.
-     *
-     * @return array The context.
-     */
-    public function get_context() {
-        $product = sc_get_product();
+	/**
+	 * Get the context for the block.
+	 *
+	 * @return array The context.
+	 */
+	public function get_context() {
+		$product = sc_get_product();
 
-        return array(
-            'bgnPrices'   => array_map(
-                fn( $price ) => $price->only(
-                    array(
-                        'id',
-                        'bgn_display_amount',
-                    )
-                ),
-                $product->active_prices ?? array()
-            ),
-            'bgnVariants' => array_map(
-                fn( $variant ) => $variant->only(
-                    array(
-                        'id',
-                        'bgn_display_amount',
-                    )
-                ),
-                $product->variants->data ?? array()
-            ),
-        );
-    }
+		return array(
+			'bgnPrices'   => array_map(
+				fn( $price ) => $price->only(
+					array(
+						'id',
+						'bgn_display_amount',
+					)
+				),
+				$product->active_prices ?? array()
+			),
+			'bgnVariants' => array_map(
+				fn( $variant ) => $variant->only(
+					array(
+						'id',
+						'bgn_display_amount',
+					)
+				),
+				$product->variants->data ?? array()
+			),
+		);
+	}
 
 	/**
 	 * Render the block.
@@ -78,7 +81,7 @@ class SureCartBulgariaSetPricingAttribute {
 			return $block_content;
 		}
 
-        // Enqueue the script only when this block is rendered.
+		// Enqueue the script only when this block is rendered.
 		wp_enqueue_script_module( 'surecart-bulgaria-dual-pricing' );
 
 		// Build the additional content to inject.
@@ -86,14 +89,14 @@ class SureCartBulgariaSetPricingAttribute {
 		?>
 		<span data-wp-interactive='{ "namespace": "surecart/bulgaria-dual-pricing" }'>
 			<span
-			<?php
-			echo wp_kses_data(
-				wp_interactivity_data_wp_context(
-					$this->get_context()
-				)
-			);
-			?>
-			data-wp-text="state.selectedDisplayAmount"></span>
+				<?php
+				echo wp_kses_data(
+					wp_interactivity_data_wp_context(
+						$this->get_context()
+					)
+				);
+				?>
+				data-wp-text="state.selectedDisplayAmount"></span>
 		</span>
 		<?php
 		$additional_content = ob_get_clean();
@@ -139,14 +142,21 @@ class SureCartBulgariaSetPricingAttribute {
 		return $block_content . $additional_content;
 	}
 
-    public function update_list_price( $block_content, $block ) {
-        if ( 'surecart/product-list-price' !== $block['blockName'] ) {
-            return $block_content;
-        }
+	/**
+	 * Update the list price block with BGN pricing.
+	 *
+	 * @param string $block_content The block content.
+	 * @param array  $block The block.
+	 * @return string The block content.
+	 */
+	public function update_list_price( $block_content, $block ) {
+		if ( 'surecart/product-list-price' !== $block['blockName'] ) {
+			return $block_content;
+		}
 
-        $product = sc_get_product();
+		$product = sc_get_product();
 
-        $additional_content = $product->initial_price->bgn_display_amount;
+		$additional_content = $product->initial_price->bgn_display_amount;
 
 		// Use WP_HTML_Tag_Processor to inject content inside the wrapper.
 		$processor = new WP_HTML_Tag_Processor( $block_content );
@@ -186,37 +196,79 @@ class SureCartBulgariaSetPricingAttribute {
 		}
 
 		// Fallback: if processor fails, append after the block.
-		return $block_content . ' ' . $additional_content;  
-    }
+		return $block_content . ' ' . $additional_content;
+	}
 
-	/*
-	* Set the pricing attribute for the price.
-	*
-	* @param \SureCart\Models\Price $price The price model.
-	* @return void
-	*/
+	/**
+	 * Set the pricing attribute for the price.
+	 *
+	 * @param \SureCart\Models\Price $price The price model.
+	 * @return void
+	 */
 	public function set_pricing_attribute( $price ) {
-        if ( 'eur' !== $price->currency ) {
-            return $price->display_amount;
-        }
-        $bgn_amount = $price->amount * 1.95583; // Convert EUR to BGN using fixed rate: 1 EUR = 1.95583 BGN.
+		if ( 'eur' !== $price->currency ) {
+			return;
+		}
+		$bgn_amount         = $price->amount * 1.95583; // Convert EUR to BGN using fixed rate: 1 EUR = 1.95583 BGN.
 		$bgn_display_amount = empty( $bgn_amount ) ? '' : Currency::format( $bgn_amount, 'bgn' );
 		$price->setAttribute( 'bgn_display_amount', $bgn_display_amount );
 	}
 
 	/**
-	 * Set the checkout total attribute for BGN display.
-	 * Appends BGN amount directly to total_display_amount for web component compatibility.
+	 * Modify the REST response to append BGN pricing to checkout display amounts.
 	 *
-	 * @param \SureCart\Models\Checkout $checkout The checkout model.
-	 * @return void
+	 * @param \WP_REST_Response $response The response object.
+	 * @param \WP_REST_Server   $server   The REST server.
+	 * @param \WP_REST_Request  $request  The request object.
+	 * @return \WP_REST_Response
 	 */
-	public function set_checkout_total_attribute( $checkout ) {
-		if ( 'eur' !== $checkout->currency ) {
-			return;
+	public function modify_checkout_rest_response( $response, $server, $request ) {
+		// Only modify checkout endpoints.
+		if ( strpos( $request->get_route(), '/surecart/v1/checkouts' ) === false ) {
+			return $response;
 		}
-		$bgn_total = $checkout->total_amount * 1.95583; // Convert EUR to BGN using fixed rate: 1 EUR = 1.95583 BGN.
-		$bgn_total_display_amount = empty( $bgn_total ) ? '' : ' ' . Currency::format( $bgn_total, 'bgn' );
-		$checkout->setAttribute( 'total_display_amount', $checkout->total_display_amount . $bgn_total_display_amount );
+
+		$data = $response->get_data();
+
+		if ( empty( $data ) || ( ! is_array( $data ) && ! is_object( $data ) ) ) {
+			return $response;
+		}
+
+		// Convert to array for easier manipulation.
+		$data = (array) $data;
+
+		// Only modify EUR checkouts.
+		if ( empty( $data['currency'] ) || 'eur' !== $data['currency'] ) {
+			return $response;
+		}
+
+		$data = $this->append_bgn_pricing( $data );
+		$response->set_data( $data );
+
+		return $response;
+	}
+
+	/**
+	 * Append BGN pricing to checkout display amounts.
+	 *
+	 * @param array $data The checkout data.
+	 * @return array
+	 */
+	private function append_bgn_pricing( $data ) {
+		// Append BGN total.
+		if ( ! empty( $data['total_amount'] ) ) {
+			$bgn_total                    = $data['total_amount'] * 1.95583;
+			$bgn_display                  = Currency::format( $bgn_total, 'bgn' );
+			$data['total_display_amount'] = ( $data['total_display_amount'] ?? '' ) . ' ' . $bgn_display;
+		}
+
+		// Append BGN subtotal.
+		if ( ! empty( $data['subtotal_amount'] ) ) {
+			$bgn_subtotal                    = $data['subtotal_amount'] * 1.95583;
+			$bgn_display                     = Currency::format( $bgn_subtotal, 'bgn' );
+			$data['subtotal_display_amount'] = ( $data['subtotal_display_amount'] ?? '' ) . ' ' . $bgn_display;
+		}
+
+		return $data;
 	}
 }
