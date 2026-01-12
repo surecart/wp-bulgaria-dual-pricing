@@ -24,6 +24,7 @@ class SureCartBulgariaSetPricingAttribute {
 	public function __construct() {
 		add_action( 'surecart/price/attributes_set', array( $this, 'set_pricing_attribute' ) );
 		add_action( 'surecart/variant/attributes_set', array( $this, 'set_pricing_attribute' ) );
+		add_action( 'surecart/line_item/attributes_set', array( $this, 'set_line_item_attribute' ) );
 		add_filter( 'rest_post_dispatch', array( $this, 'modify_checkout_rest_response' ), 10, 3 );
 		add_action( 'render_block', array( $this, 'update_selected_price' ), 10, 2 );
 		add_action( 'render_block', array( $this, 'update_list_price' ), 10, 2 );
@@ -270,5 +271,34 @@ class SureCartBulgariaSetPricingAttribute {
 		}
 
 		return $data;
+	}
+
+	/**
+	 * Set the line item attribute for BGN display.
+	 * Appends BGN amount directly to ad_hoc_display_amount for web component compatibility.
+	 *
+	 * @param \SureCart\Models\LineItem $line_item The line item model.
+	 * @return void
+	 */
+	public function set_line_item_attribute( $line_item ) {
+		// Get currency from the expanded checkout or price.
+		$currency = $line_item->checkout->currency ?? $line_item->price->currency ?? null;
+		if ( 'eur' !== $currency ) {
+			return;
+		}
+
+		// Convert ad_hoc_amount if present.
+		if ( ! empty( $line_item->ad_hoc_amount ) ) {
+			$bgn_amount = $line_item->ad_hoc_amount * 1.95583;
+			$bgn_display = ' ' . Currency::format( $bgn_amount, 'bgn' );
+			$line_item->setAttribute( 'ad_hoc_display_amount', $line_item->ad_hoc_display_amount . $bgn_display );
+		}
+
+		// Convert subtotal_amount if present.
+		if ( ! empty( $line_item->subtotal_amount ) ) {
+			$bgn_subtotal = $line_item->subtotal_amount * 1.95583;
+			$bgn_subtotal_display = ' ' . Currency::format( $bgn_subtotal, 'bgn' );
+			$line_item->setAttribute( 'subtotal_display_amount', $line_item->subtotal_display_amount . $bgn_subtotal_display );
+		}
 	}
 }
