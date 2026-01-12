@@ -223,26 +223,74 @@ class SureCartBulgariaSetPricingAttribute {
 	 * @return \WP_REST_Response
 	 */
 	public function modify_checkout_rest_response( $response, $server, $request ) {
-		// Only modify checkout endpoints.
-		if ( strpos( $request->get_route(), '/surecart/v1/checkouts' ) === false ) {
-			return $response;
+		$route = $request->get_route();
+
+		// Handle checkout endpoints.
+		if ( strpos( $route, '/surecart/v1/checkouts' ) !== false ) {
+			return $this->modify_checkout_response( $response );
 		}
 
+		// Handle line item endpoints (checkout is expanded within line item).
+		if ( strpos( $route, '/surecart/v1/line_items' ) !== false ) {
+			return $this->modify_line_item_response( $response );
+		}
+
+		return $response;
+	}
+
+	/**
+	 * Modify checkout REST response.
+	 *
+	 * @param \WP_REST_Response $response The response object.
+	 * @return \WP_REST_Response
+	 */
+	private function modify_checkout_response( $response ) {
 		$data = $response->get_data();
 
 		if ( empty( $data ) || ( ! is_array( $data ) && ! is_object( $data ) ) ) {
 			return $response;
 		}
 
-		// Convert to array for easier manipulation.
 		$data = (array) $data;
 
-		// Only modify EUR checkouts.
 		if ( empty( $data['currency'] ) || 'eur' !== $data['currency'] ) {
 			return $response;
 		}
 
 		$data = $this->append_bgn_pricing( $data );
+		$response->set_data( $data );
+
+		return $response;
+	}
+
+	/**
+	 * Modify line item REST response to update expanded checkout.
+	 *
+	 * @param \WP_REST_Response $response The response object.
+	 * @return \WP_REST_Response
+	 */
+	private function modify_line_item_response( $response ) {
+		$data = $response->get_data();
+
+		if ( empty( $data ) || ( ! is_array( $data ) && ! is_object( $data ) ) ) {
+			return $response;
+		}
+
+		$data = (array) $data;
+
+		// Check if checkout is expanded and is EUR.
+		if ( empty( $data['checkout'] ) || ! is_array( $data['checkout'] ) ) {
+			return $response;
+		}
+
+		$checkout = (array) $data['checkout'];
+
+		if ( empty( $checkout['currency'] ) || 'eur' !== $checkout['currency'] ) {
+			return $response;
+		}
+
+		// Append BGN pricing to the expanded checkout.
+		$data['checkout'] = $this->append_bgn_pricing( $checkout );
 		$response->set_data( $data );
 
 		return $response;
