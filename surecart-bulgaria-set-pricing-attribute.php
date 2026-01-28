@@ -46,25 +46,8 @@ class SureCartBulgariaSetPricingAttribute {
 	 * @return void
 	 */
 	public function enqueue_block_assets() {
+		// Only enqueue the product page dual pricing script (for variant/price selection)
 		wp_register_script_module( 'surecart-bulgaria-dual-pricing', plugin_dir_url( __FILE__ ) . 'surecart-bulgaria-dual-pricing.js', array( '@surecart/product-page' ) );
-
-		// Enqueue checkout dual pricing script on pages with checkout.
-		wp_enqueue_script(
-			'surecart-bulgaria-checkout-dual-pricing',
-			plugin_dir_url( __FILE__ ) . 'surecart-bulgaria-checkout-dual-pricing.js',
-			array(),
-			'1.0.5',
-			true
-		);
-
-		// Pass the conversion rate to JavaScript.
-		wp_localize_script(
-			'surecart-bulgaria-checkout-dual-pricing',
-			'scBulgariaDualPricing',
-			array(
-				'eurToBgnRate' => self::EUR_TO_BGN_RATE,
-			)
-		);
 	}
 
 	/**
@@ -410,19 +393,27 @@ class SureCartBulgariaSetPricingAttribute {
 
 		$data = (array) $data;
 
+		// Check if already processed (avoid double processing).
+		if ( ! empty( $data['scratch_display_amount'] ) && strpos( $data['scratch_display_amount'], 'лв.' ) !== false ) {
+			return $response;
+		}
+
+		// Process the top-level line item itself if it's EUR.
+		if ( ! empty( $data['currency'] ) && 'eur' === $data['currency'] ) {
+			$data = $this->append_bgn_to_line_item( $data );
+		}
+
 		// Check if checkout is expanded and is EUR.
-		if ( empty( $data['checkout'] ) || ! is_array( $data['checkout'] ) ) {
-			return $response;
+		if ( ! empty( $data['checkout'] ) && is_array( $data['checkout'] ) ) {
+			$checkout = (array) $data['checkout'];
+
+			if ( ! empty( $checkout['currency'] ) && 'eur' === $checkout['currency'] ) {
+				// Append BGN pricing to the expanded checkout.
+				// Don't skip any line items - process all of them.
+				$data['checkout'] = $this->append_bgn_pricing( $checkout, null );
+			}
 		}
 
-		$checkout = (array) $data['checkout'];
-
-		if ( empty( $checkout['currency'] ) || 'eur' !== $checkout['currency'] ) {
-			return $response;
-		}
-
-		// Append BGN pricing to the expanded checkout.
-		$data['checkout'] = $this->append_bgn_pricing( $checkout );
 		$response->set_data( $data );
 
 		return $response;
@@ -431,10 +422,11 @@ class SureCartBulgariaSetPricingAttribute {
 	/**
 	 * Append BGN pricing to checkout display amounts.
 	 *
-	 * @param array $data The checkout data.
+	 * @param array  $data The checkout data.
+	 * @param string $skip_line_item_id Optional line item ID to skip (already processed at top level).
 	 * @return array
 	 */
-	private function append_bgn_pricing( $data ) {
+	private function append_bgn_pricing( $data, $skip_line_item_id = null ) {
 		// Append BGN total.
 		if ( ! empty( $data['total_amount'] ) ) {
 			$bgn_total                    = $data['total_amount'] * self::EUR_TO_BGN_RATE;
@@ -459,6 +451,10 @@ class SureCartBulgariaSetPricingAttribute {
 		// Append BGN pricing to line items.
 		if ( ! empty( $data['line_items']['data'] ) && is_array( $data['line_items']['data'] ) ) {
 			foreach ( $data['line_items']['data'] as &$line_item ) {
+				// Skip if this is the same line item we already processed at the top level.
+				if ( $skip_line_item_id && ! empty( $line_item['id'] ) && $line_item['id'] === $skip_line_item_id ) {
+					continue;
+				}
 				$line_item = $this->append_bgn_to_line_item( $line_item );
 			}
 		}
@@ -473,31 +469,40 @@ class SureCartBulgariaSetPricingAttribute {
 	 * @return array
 	 */
 	private function append_bgn_to_line_item( $line_item ) {
-		if ( ! is_array( $line_item ) ) {
-			$line_item = (array) $line_item;
-		}
+        if ( ! is_array( $line_item ) ) {
+            $line_item = (array) $line_item;
+        }
 
-		// Append BGN to scratch display amount (must be done together with subtotal to maintain equality check).
-		if ( ! empty( $line_item['scratch_amount'] ) ) {
-			$bgn_scratch                          = $line_item['scratch_amount'] * self::EUR_TO_BGN_RATE;
-			$bgn_display                          = Currency::format( $bgn_scratch, 'bgn' );
-			$line_item['scratch_display_amount']  = ( $line_item['scratch_display_amount'] ?? '' ) . ' (' . $bgn_display . ')';
-		}
+        // Append BGN to scratch display amount (only if not already appended).
+        if ( ! empty( $line_item['scratch_amount'] ) && ! empty( $line_item['scratch_display_amount'] ) ) {
+            // Check if BGN is already appended.
+            if ( strpos( $line_item['scratch_display_amount'], 'лв.' ) === false ) {
+                $bgn_scratch                          = $line_item['scratch_amount'] * self::EUR_TO_BGN_RATE;
+                $bgn_display                          = Currency::format( $bgn_scratch, 'bgn' );
+                $line_item['scratch_display_amount']  = $line_item['scratch_display_amount'] . ' (' . $bgn_display . ')';
+            }
+        }
 
-		// Append BGN to subtotal display amount.
-		if ( ! empty( $line_item['subtotal_amount'] ) ) {
-			$bgn_subtotal                         = $line_item['subtotal_amount'] * self::EUR_TO_BGN_RATE;
-			$bgn_display                          = Currency::format( $bgn_subtotal, 'bgn' );
-			$line_item['subtotal_display_amount'] = ( $line_item['subtotal_display_amount'] ?? '' ) . ' (' . $bgn_display . ')';
-		}
+        // Append BGN to subtotal display amount (only if not already appended).
+        if ( ! empty( $line_item['subtotal_amount'] ) && ! empty( $line_item['subtotal_display_amount'] ) ) {
+            // Check if BGN is already appended.
+            if ( strpos( $line_item['subtotal_display_amount'], 'лв.' ) === false ) {
+                $bgn_subtotal                         = $line_item['subtotal_amount'] * self::EUR_TO_BGN_RATE;
+                $bgn_display                          = Currency::format( $bgn_subtotal, 'bgn' );
+                $line_item['subtotal_display_amount'] = $line_item['subtotal_display_amount'] . ' (' . $bgn_display . ')';
+            }
+        }
 
-		// Append BGN to ad_hoc display amount (for donations).
-		if ( ! empty( $line_item['ad_hoc_amount'] ) ) {
-			$bgn_ad_hoc                         = $line_item['ad_hoc_amount'] * self::EUR_TO_BGN_RATE;
-			$bgn_display                        = Currency::format( $bgn_ad_hoc, 'bgn' );
-			$line_item['ad_hoc_display_amount'] = ( $line_item['ad_hoc_display_amount'] ?? '' ) . ' (' . $bgn_display . ')';
-		}
+        // Append BGN to ad_hoc display amount (for donations, only if not already appended).
+        if ( ! empty( $line_item['ad_hoc_amount'] ) && ! empty( $line_item['ad_hoc_display_amount'] ) ) {
+            // Check if BGN is already appended.
+            if ( strpos( $line_item['ad_hoc_display_amount'], 'лв.' ) === false ) {
+                $bgn_ad_hoc                         = $line_item['ad_hoc_amount'] * self::EUR_TO_BGN_RATE;
+                $bgn_display                        = Currency::format( $bgn_ad_hoc, 'bgn' );
+                $line_item['ad_hoc_display_amount'] = $line_item['ad_hoc_display_amount'] . ' (' . $bgn_display . ')';
+            }
+        }
 
-		return $line_item;
-	}
+        return $line_item;
+    }
 }
