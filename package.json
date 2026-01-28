@@ -5,7 +5,6 @@
   "main": "surecart-bulgaria-dual-pricing.js",
   "files": [
     "surecart-bulgaria-dual-pricing.js",
-    "surecart-bulgaria-checkout-dual-pricing.js",
     "surecart-bulgaria-set-pricing-attribute.php",
     "surcart-bulgaria-dual-pricing.php"
   ],
