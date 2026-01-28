@@ -18,15 +18,11 @@ store("surecart/bulgaria-dual-pricing", {
         (variant) => variant.id === productPageState.selectedVariant.id
       );
 
-      if (prices?.length > 1) {
-        return selectedBgnPrice?.bgn_display_amount || "";
-      }
+      const bgnAmount = prices?.length > 1
+        ? selectedBgnPrice?.bgn_display_amount
+        : selectedBgnVariant?.bgn_display_amount || selectedBgnPrice?.bgn_display_amount;
 
-      return (
-        selectedBgnVariant?.bgn_display_amount ||
-        selectedBgnPrice?.bgn_display_amount ||
-        ""
-      );
+      return bgnAmount ? ` (${bgnAmount})` : "";
     },
   },
 });
