@@ -3,7 +3,7 @@
 /**
  * Plugin Name: SureCart Bulgaria Dual Pricing
  * Description: Dual pricing for SureCart in Bulgaria.
- * Version: 1.0.2
+ * Version: 1.0.3
  * Author: SureCart
  * Author URI: https://surecart.com
  */
